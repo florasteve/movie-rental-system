@@ -1,0 +1,2 @@
+StaffID,StoreID,FirstName,LastName,Email,Active
+1,1,Sam,Clerk,sam.clerk@store.local,1
