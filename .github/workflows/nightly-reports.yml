@@ -46,6 +46,10 @@ jobs:
         run: |
           /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U SA -P "$SA_PASSWORD" -i scripts/apply_local.sql
 
+      - name: Diagnose views presence
+        run: |
+          /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U SA -P "$SA_PASSWORD" -d MovieRentalDB -Q "SELECT DB_NAME() AS CurrentDB; SELECT name, type_desc FROM sys.objects WHERE name IN (vwOverdueRentals,vwLowInventory);"
+
       - name: Verify reporting views exist
         run: |
           /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U SA -P "$SA_PASSWORD" -d MovieRentalDB -Q "
