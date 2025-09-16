@@ -6,3 +6,4 @@
 :r /var/opt/mssql/sql/99_grants.sql
 :r /var/opt/mssql/sql/91_seed_from_csv.sql
 :r /var/opt/mssql/sql/03_patch_return_proc.sql
+:r /var/opt/mssql/sql/02b_views_reports.sql
