@@ -1,1 +1,10 @@
+:r ./sql/01_schema.sql
+:r ./sql/02_views.sql
+:r ./sql/03_procs.sql
+:r ./sql/03_patch_return_proc.sql
+:r ./sql/04_triggers.sql
+:r ./sql/05_indexes.sql
+:r ./sql/90_seed.sql
+:r ./sql/91_seed_from_csv.sql
 :r ./sql/02b_views_reports.sql
+:r ./sql/99_grants.sql
