@@ -1,10 +1,10 @@
 :r /var/opt/mssql/sql/01_schema.sql
 :r /var/opt/mssql/sql/02_views.sql
 :r /var/opt/mssql/sql/03_procs.sql
-:r /var/opt/mssql/sql/04_triggers.sql
-:r /var/opt/mssql/sql/90_seed.sql
-:r /var/opt/mssql/sql/99_grants.sql
-:r /var/opt/mssql/sql/91_seed_from_csv.sql
 :r /var/opt/mssql/sql/03_patch_return_proc.sql
-:r /var/opt/mssql/sql/02b_views_reports.sql
+:r /var/opt/mssql/sql/04_triggers.sql
 :r /var/opt/mssql/sql/05_indexes.sql
+:r /var/opt/mssql/sql/90_seed.sql
+:r /var/opt/mssql/sql/91_seed_from_csv.sql
+:r /var/opt/mssql/sql/02b_views_reports.sql
+:r /var/opt/mssql/sql/99_grants.sql
