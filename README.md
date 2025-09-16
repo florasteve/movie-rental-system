@@ -1,61 +1,56 @@
-# Movie Rental System
+# 🎬 Movie Rental System
 
-Relational database for **movie rental operations**: catalog, inventory, customers, and rentals.  
-Built for **SQL Server** in **SSMS** with a normalized schema, **T-SQL** stored procedures (rent/return), and reporting views.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![SQL Server](https://img.shields.io/badge/DB-Microsoft%20SQL%20Server-blue)](https://www.microsoft.com/sql-server) [![Docker](https://img.shields.io/badge/Container-Docker-informational)](https://www.docker.com/)
 
----
-
-## ✨ Features
-- Movie catalog with inventory counts (`CopiesTotal`, `CopiesAvailable`)
-- Customer registry with membership status
-- Rental workflow: **Rent → Return** with due dates and optional late fees
-- Views for **overdues**, **top movies**, and **current availability**
-- Sample queries for utilization and customer activity
-
----
-
-## 🧱 Schema (Core Tables)
-
-- `Movies(MovieID, Title, ReleaseYear, Rating, Genre, CopiesTotal, CopiesAvailable, CreatedAt, UpdatedAt)`
-- `Customers(CustomerID, FirstName, LastName, Email, MemberSince, Status, CreatedAt, UpdatedAt)`
-- `Rentals(RentalID, MovieID, CustomerID, RentalDate, DueDate, ReturnDate, FeeAccrued, CreatedAt, UpdatedAt)`
-
-> Optional status semantics: `Customers.Status = Active | Inactive`
-
----
+A Dockerized Microsoft SQL Server database for a classic movie rental domain—customers, movies, inventory, rentals, and payments—with seed data, views, procs, and triggers.
 
 ## 🗺️ ER Diagram (Mermaid)
-
 ```mermaid
 erDiagram
-  MOVIES   ||--o{ RENTALS : loaned
-  CUSTOMERS||--o{ RENTALS : borrows
+  CUSTOMERS ||--o{ RENTALS : makes
+  STAFF ||--o{ RENTALS : handles
+  STORES ||--o{ STAFF : employs
+  STORES ||--o{ INVENTORY : stocks
+  MOVIES ||--o{ INVENTORY : listed_as
+  MOVIES ||--o{ MOVIEGENRES : labeled
+  GENRES ||--o{ MOVIEGENRES : categorizes
+  INVENTORY ||--o{ RENTALS : fulfills
+  RENTALS ||--o{ PAYMENTS : billed
 
-  MOVIES {
-    int MovieID PK
-    string Title
-    int ReleaseYear
-    string Rating
-    string Genre
-    int CopiesTotal
-    int CopiesAvailable
-  }
+  CUSTOMERS { int CustomerID PK string FirstName string LastName string Email string Phone string Status }
+  MOVIES { int MovieID PK string Title int ReleaseYear string Rating decimal RentalRate decimal ReplacementCost }
+  GENRES { int GenreID PK string Name }
+  MOVIEGENRES { int MovieID FK int GenreID FK }
+  STORES { int StoreID PK string Name string AddressLine1 string City string State }
+  STAFF { int StaffID PK int StoreID FK string FirstName string LastName string Email bool Active }
+  INVENTORY { int InventoryID PK int MovieID FK int StoreID FK int CopiesTotal int CopiesAvailable }
+  RENTALS { int RentalID PK int InventoryID FK int CustomerID FK int StaffID FK datetime RentedAt datetime DueAt datetime ReturnedAt string Status }
+  PAYMENTS { int PaymentID PK int RentalID FK decimal Amount datetime PaidAt string Method }
 
-  CUSTOMERS {
-    int CustomerID PK
-    string FirstName
-    string LastName
-    string Email
-    date MemberSince
-    string Status
-  }
+🚀 Quick start
 
-  RENTALS {
-    int RentalID PK
-    int MovieID FK
-    int CustomerID FK
-    date RentalDate
-    date DueDate
-    date ReturnDate
-    decimal FeeAccrued
-  }
+Create .env with SA_PASSWORD
+
+docker compose -f docker/docker-compose.yml up -d
+
+Apply scripts: sqlcmd -i scripts/apply.sql via container (see scripts section)
+
+Try RentMovie / ReturnMovie to validate logic.
+
+📂 Structure
+
+docker/ compose & runtime
+
+sql/ DDL, views, procs, triggers, seed
+
+scripts/ orchestration .sql
+
+data/ CSVs (future)
+
+🔧 Scripts
+
+Use scripts/apply.sql to apply in correct order.
+
+📝 License
+
+MIT — see LICENSE.

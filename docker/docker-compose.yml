@@ -1,0 +1,21 @@
+services:
+  movie-mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: movie-mssql
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=${SA_PASSWORD}
+    ports:
+      - "1433:1433"
+    healthcheck:
+      test: [ "CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U SA -P ${SA_PASSWORD} -Q 'SELECT 1' || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    volumes:
+      - mssql_data:/var/opt/mssql
+      - ./sql:/var/opt/mssql/sql
+      - ./data:/var/opt/mssql/data
+      - ./scripts:/var/opt/mssql/scripts
+volumes:
+  mssql_data:
