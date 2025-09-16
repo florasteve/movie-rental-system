@@ -10,24 +10,33 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}-v1
-          restore-keys: |
-            ${{ runner.os }}-pip-
+
       - name: Install sqlfluff
         run: |
           python -m pip install --upgrade pip
           pip install "sqlfluff>=3,<4"
-      - name: Lint T-SQL (non-blocking)
+
+      - name: Determine files
+        id: df
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git diff --name-only origin/${{ github.base_ref }}... | grep -E '\.sql$' || true
+          else
+            git ls-files '*.sql'
+          fi > files.txt
+          echo "count=$(wc -l < files.txt)" >> $GITHUB_OUTPUT
+          echo "Files to lint:"
+          cat files.txt || true
+
+      # Non-blocking while you iterate; remove continue-on-error to enforce later
+      - name: Lint changed SQL (non-blocking while iterating)
+        if: steps.df.outputs.count != '0'
         continue-on-error: true
         run: |
-          echo "Linting all .sql in ./sql ..."
-          test -d sql || (echo "::warning file=sql::'sql' folder not found"; exit 0)
-          sqlfluff version
-          sqlfluff lint sql --dialect tsql || echo "::warning::sqlfluff found issues (temporarily non-blocking)"
+          xargs -a files.txt sqlfluff lint --dialect tsql || echo "::warning::sqlfluff found issues (temporarily non-blocking)"
