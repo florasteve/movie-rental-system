@@ -47,3 +47,4 @@ Use `scripts/apply.sql` to apply in correct order.
 MIT — see LICENSE.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
