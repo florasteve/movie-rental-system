@@ -2,13 +2,12 @@ name: Nightly DB reports
 
 on:
   schedule:
-    - cron: '30 06 * * *'   # 06:30 UTC (~02:30 ET while on EDT)
+    - cron: '30 06 * * *'
   workflow_dispatch:
 
 jobs:
   build-and-export:
     runs-on: ubuntu-latest
-    # Make the secret available as an env var for all steps
     env:
       SA_PASSWORD: ${{ secrets.SA_PASSWORD }}
 
@@ -17,49 +16,52 @@ jobs:
         image: mcr.microsoft.com/mssql/server:2022-latest
         env:
           ACCEPT_EULA: Y
-          # The service itself still needs the password env; using secrets here is valid in Actions
           SA_PASSWORD: ${{ secrets.SA_PASSWORD }}
         ports:
           - 1433:1433
-        options: >-
-          # Use $SA_PASSWORD (provided via env above) to avoid lint complaints
-          --health-cmd="/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U SA -P $SA_PASSWORD -Q 'SELECT 1' || exit 1"
-          --health-interval=10s --health-timeout=5s --health-retries=30
+        # no custom options/health-cmd — we’ll wait from the runner
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install sqlcmd (mssql-tools18)
+      - name: Install sqlcmd (mssql-tools18 & ODBC)
         run: |
+          set -eux
           sudo apt-get update
-          sudo ACCEPT_EULA=Y apt-get install -y curl gnupg
-          curl https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
-          curl https://packages.microsoft.com/config/ubuntu/22.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list
+          sudo apt-get install -y curl gnupg
+          curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/microsoft.gpg > /dev/null
+          curl -fsSL https://packages.microsoft.com/config/ubuntu/22.04/prod.list | sudo tee /etc/apt/sources.list.d/msprod.list > /dev/null
           sudo apt-get update
-          sudo ACCEPT_EULA=Y apt-get install -y mssql-tools18 unixodbc-dev
+          sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18 mssql-tools18 unixodbc-dev
 
-      - name: Wait for SQL
+      - name: Wait for SQL to accept connections
         run: |
-          for i in {1..30}; do
+          set -eux
+          for i in {1..60}; do
             /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U SA -P "$SA_PASSWORD" -Q "SELECT 1" && break
-            sleep 5
+            sleep 2
           done
 
       - name: Apply schema & seed (local paths)
         run: |
           /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U SA -P "$SA_PASSWORD" -i scripts/apply_local.sql
 
-      - name: Export reports (tolerate missing views)
+      - name: Verify reporting views exist
+        run: |
+          /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U SA -P "$SA_PASSWORD" -d MovieRentalDB -Q "
+            IF OBJECT_ID('dbo.vwOverdueRentals','V') IS NULL OR OBJECT_ID('dbo.vwLowInventory','V') IS NULL
+              THROW 50010, 'Reporting views missing — ensure sql/02b_views_reports.sql is included', 1;
+          "
+
+      - name: Export reports
         run: |
           /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U SA -P "$SA_PASSWORD" -d MovieRentalDB \
-            -Q "SET NOCOUNT ON; IF OBJECT_ID('dbo.vwOverdueRentals','V') IS NOT NULL SELECT * FROM dbo.vwOverdueRentals;" \
-            -s "," -W -w 0 -o overdue_rentals.csv || true
-          [ -s overdue_rentals.csv ] || : > overdue_rentals.csv
+            -Q "SET NOCOUNT ON; SELECT * FROM dbo.vwOverdueRentals;" \
+            -s "," -W -w 0 -o overdue_rentals.csv
 
           /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U SA -P "$SA_PASSWORD" -d MovieRentalDB \
-            -Q "SET NOCOUNT ON; IF OBJECT_ID('dbo.vwLowInventory','V') IS NOT NULL SELECT * FROM dbo.vwLowInventory;" \
-            -s "," -W -w 0 -o low_inventory.csv || true
-          [ -s low_inventory.csv ] || : > low_inventory.csv
+            -Q "SET NOCOUNT ON; SELECT * FROM dbo.vwLowInventory;" \
+            -s "," -W -w 0 -o low_inventory.csv
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
