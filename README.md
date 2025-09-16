@@ -28,30 +28,20 @@ erDiagram
   PAYMENTS { int PaymentID PK int RentalID FK decimal Amount datetime PaidAt string Method }
 ```
 
-🚀 Quick start
+## 🚀 Quick start  
+1. Create .env with `SA_PASSWORD`
+1. `docker compose -f docker/docker-compose.yml up -d`
+1. Apply scripts: `sqlcmd -i scripts/apply.sql` via container (see scripts section)
+1. Try `RentMovie` / `ReturnMovie` to validate logic.
 
-Create .env with SA_PASSWORD
+## 📂 Structure  
+- `docker/` compose & runtime  
+- `sql/` DDL, views, procs, triggers, seed  
+- `scripts/` orchestration `.sql`  
+- `data/` CSVs (future)
 
-docker compose -f docker/docker-compose.yml up -d
+## 🔧 Scripts  
+Use `scripts/apply.sql` to apply in correct order.
 
-Apply scripts: sqlcmd -i scripts/apply.sql via container (see scripts section)
-
-Try RentMovie / ReturnMovie to validate logic.
-
-📂 Structure
-
-docker/ compose & runtime
-
-sql/ DDL, views, procs, triggers, seed
-
-scripts/ orchestration .sql
-
-data/ CSVs (future)
-
-🔧 Scripts
-
-Use scripts/apply.sql to apply in correct order.
-
-📝 License
-
+## 📝 License  
 MIT — see LICENSE.
