@@ -1,0 +1,3 @@
+InventoryID,MovieID,StoreID,CopiesTotal,CopiesAvailable
+1,1,1,5,5
+2,2,1,3,3
