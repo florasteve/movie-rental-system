@@ -26,6 +26,7 @@ erDiagram
   INVENTORY { int InventoryID PK int MovieID FK int StoreID FK int CopiesTotal int CopiesAvailable }
   RENTALS { int RentalID PK int InventoryID FK int CustomerID FK int StaffID FK datetime RentedAt datetime DueAt datetime ReturnedAt string Status }
   PAYMENTS { int PaymentID PK int RentalID FK decimal Amount datetime PaidAt string Method }
+```
 
 🚀 Quick start
 
