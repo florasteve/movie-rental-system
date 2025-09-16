@@ -48,7 +48,7 @@ jobs:
 
       - name: Diagnose views presence
         run: |
-          /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U SA -P "$SA_PASSWORD" -d MovieRentalDB -Q "SELECT DB_NAME() AS CurrentDB; SELECT name, type_desc FROM sys.objects WHERE name IN (vwOverdueRentals,vwLowInventory);"
+          /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U SA -P "$SA_PASSWORD" -d MovieRentalDB -Q "SELECT DB_NAME() AS CurrentDB; SELECT name, type_desc FROM sys.objects WHERE name IN ('vwOverdueRentals','vwLowInventory');"
 
       - name: Verify reporting views exist
         run: |
@@ -61,11 +61,11 @@ jobs:
         run: |
           /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U SA -P "$SA_PASSWORD" -d MovieRentalDB \
             -Q "SET NOCOUNT ON; SELECT * FROM dbo.vwOverdueRentals;" \
-            -s "," -W -w 0 -o overdue_rentals.csv
+            -s "," -W -w 65535 -o overdue_rentals.csv
 
           /opt/mssql-tools18/bin/sqlcmd -C -S localhost -U SA -P "$SA_PASSWORD" -d MovieRentalDB \
             -Q "SET NOCOUNT ON; SELECT * FROM dbo.vwLowInventory;" \
-            -s "," -W -w 0 -o low_inventory.csv
+            -s "," -W -w 65535 -o low_inventory.csv
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
