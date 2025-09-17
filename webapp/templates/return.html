@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-6">Return Rental</h1>
+
+{% if error %}
+<div class="mb-4 rounded-xl border border-red-300 bg-red-50 text-red-800 px-3 py-2">
+  {{ error }}
+</div>
+{% endif %}
+
+<div class="bg-white rounded-2xl shadow p-6 max-w-xl space-y-4">
+  <div>
+    <label class="block text-sm font-medium mb-1">Find open rentals</label>
+    <form hx-get="/api/rentals/open" hx-target="#rental_id" hx-trigger="keyup changed delay:300ms">
+      <input name="q" placeholder="Type to filter IDs…" class="w-full border rounded-xl px-3 py-2">
+    </form>
+  </div>
+
+  <form method="post" class="space-y-4">
+    <div>
+      <label class="block text-sm font-medium mb-1">Rental ID</label>
+      <select id="rental_id" name="rental_id" required class="w-full border rounded-xl px-3 py-2">
+        {% for rid in rental_ids %}
+        <option value="{{ rid }}">{{ rid }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700">Return</button>
+  </form>
+
+  <p class="mt-2 text-sm text-slate-600">
+    Calls <code>dbo.ReturnMovie</code>; late fees apply automatically if overdue.
+  </p>
+</div>
+{% endblock %}

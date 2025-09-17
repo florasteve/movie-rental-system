@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-6">Overdue Rentals</h1>
+
+<div class="mb-4 flex flex-col gap-3 md:flex-row md:items-end">
+  <div class="flex items-center gap-2">
+    <input id="ovSearch" type="search" placeholder="Search…"
+           class="w-72 max-w-full border rounded-xl px-3 py-2"
+           aria-label="Search overdue table">
+    <span id="ovCount" class="text-sm text-slate-600"></span>
+  </div>
+
+  <div class="flex items-center gap-2">
+    <label class="text-sm">Min days</label>
+    <input id="ovMinDays" type="number" min="0" class="w-24 border rounded-xl px-2 py-1" />
+    <label class="text-sm">Max days</label>
+    <input id="ovMaxDays" type="number" min="0" class="w-24 border rounded-xl px-2 py-1" />
+  </div>
+
+  <div class="md:ml-auto flex items-center gap-2">
+    <button id="ovExport" class="px-3 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700">
+      Export CSV
+    </button>
+  </div>
+</div>
+
+{% set has_rows = rows|length %}
+{% set has_rental = has_rows and ('RentalId' in rows[0]) %}
+
+{% if has_rows %}
+  <div class="overflow-auto bg-white rounded-2xl shadow max-h-[70vh]">
+    <table id="ovTable" class="min-w-full text-sm">
+      <thead class="bg-slate-100 sticky top-0 z-10">
+        <tr>
+          {% for k, _ in rows[0].items() %}
+            <th class="text-left px-4 py-2 font-semibold cursor-pointer select-none"
+                data-col="{{ loop.index0 }}" data-name="{{ k }}"
+                title="Click to sort">
+              <span class="inline-flex items-center gap-1">
+                {{ k }}
+                <span class="sort-indicator text-slate-400 text-xs" aria-hidden="true">⇅</span>
+              </span>
+            </th>
+          {% endfor %}
+          {% if has_rental %}
+            <th class="text-left px-4 py-2 font-semibold sticky top-0 bg-slate-100">Action</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody id="ovBody">
+        {% for r in rows %}
+        <tr class="border-t">
+          {% for _, v in r.items() %}
+            <td class="px-4 py-2">{{ v }}</td>
+          {% endfor %}
+          {% if has_rental %}
+            <td class="px-4 py-2">
+              <form method="post" action="/return" class="inline">
+                <input type="hidden" name="rental_id" value="{{ r['RentalId'] }}">
+                <button class="px-2 py-1 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 text-xs">
+                  Return
+                </button>
+              </form>
+            </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <div class="bg-white rounded-2xl shadow p-8 text-center text-slate-600">
+    <p class="text-lg font-medium mb-1">No overdue items 🎉</p>
+    <p class="text-sm">Everything is on time.</p>
+  </div>
+{% endif %}
+
+<script>
+(function () {
+  const table = document.getElementById('ovTable');
+  const tbody = document.getElementById('ovBody');
+  const search = document.getElementById('ovSearch');
+  const minEl = document.getElementById('ovMinDays');
+  const maxEl = document.getElementById('ovMaxDays');
+  const countEl = document.getElementById('ovCount');
+  const exportBtn = document.getElementById('ovExport');
+
+  if (!table || !tbody) return;
+
+  // Header meta
+  const headerEls = Array.from(table.querySelectorAll('thead th[data-col]'));
+  const headers = headerEls.map(th => (th.dataset.name || th.textContent).trim());
+  const daysIdx = headers.findIndex(h => h.toLowerCase().replace(/\s+/g,'') === 'daysoverdue');
+  const ridIdx  = headers.findIndex(h => h.toLowerCase().replace(/\s+/g,'') === 'rentalid');
+
+  // Helpers
+  const getRows = () => Array.from(tbody.querySelectorAll('tr'));
+  const cellText = (tr, idx) => (tr.children[idx]?.textContent || '').trim();
+  const parseNum = (s) => {
+    if (s == null) return NaN;
+    const n = parseFloat(String(s).replace(/[$,]/g, ''));
+    return Number.isFinite(n) ? n : NaN;
+  };
+  let currentSort = { col: null, dir: 1 };
+
+  function updateCount() {
+    const visible = getRows().filter(tr => tr.style.display !== 'none').length;
+    const total = getRows().length;
+    countEl.textContent = `${visible} of ${total} shown`;
+  }
+
+  function colorizeRows() {
+    if (daysIdx < 0) return;
+    getRows().forEach(tr => {
+      const d = parseNum(cellText(tr, daysIdx));
+      tr.classList.remove('bg-red-50','bg-amber-50');
+      if (Number.isFinite(d)) {
+        if (d >= 14) tr.classList.add('bg-red-50');
+        else if (d >= 7) tr.classList.add('bg-amber-50');
+      }
+    });
+  }
+
+  function sortBy(colIdx) {
+    const dir = (currentSort.col === colIdx) ? -currentSort.dir : 1;
+    currentSort = { col: colIdx, dir };
+
+    // Update indicators
+    table.querySelectorAll('th .sort-indicator').forEach(el => el.textContent = '⇅');
+    const th = table.querySelector(`th[data-col="${colIdx}"] .sort-indicator`);
+    if (th) th.textContent = dir === 1 ? '↑' : '↓';
+
+    const rows = getRows();
+    const visible = rows.filter(tr => tr.style.display !== 'none');
+    const hidden  = rows.filter(tr => tr.style.display === 'none');
+
+    visible.sort((a, b) => {
+      const A = cellText(a, colIdx);
+      const B = cellText(b, colIdx);
+      const aNum = parseNum(A);
+      const bNum = parseNum(B);
+
+      let cmp;
+      if (Number.isFinite(aNum) && Number.isFinite(bNum)) {
+        cmp = aNum - bNum;
+      } else {
+        cmp = A.localeCompare(B, undefined, { sensitivity: 'base', numeric: true });
+      }
+      return cmp * dir;
+    });
+
+    for (const tr of visible.concat(hidden)) tbody.appendChild(tr);
+  }
+
+  function applyFilter() {
+    const q = (search.value || '').trim().toLowerCase();
+    const min = minEl.value === '' ? null : parseNum(minEl.value);
+    const max = maxEl.value === '' ? null : parseNum(maxEl.value);
+
+    getRows().forEach(tr => {
+      // text search
+      const textHit = q
+        ? Array.from(tr.children).some(td =>
+            (td.textContent || '').toLowerCase().includes(q)
+          )
+        : true;
+
+      // days range (only if DaysOverdue column exists)
+      let rangeHit = true;
+      if (daysIdx >= 0 && (min !== null || max !== null)) {
+        const d = parseNum(cellText(tr, daysIdx));
+        rangeHit =
+          (!Number.isFinite(d) ? false :
+           (min === null || d >= min) && (max === null || d <= max));
+      }
+
+      tr.style.display = (textHit && rangeHit) ? '' : 'none';
+    });
+
+    updateCount();
+  }
+
+  function toCSV() {
+    const rows = getRows().filter(tr => tr.style.display !== 'none');
+    // Only include data columns (exclude "Action" column that has no data-col)
+    const dataHeaderEls = headerEls;
+    const header = dataHeaderEls.map(th => (th.dataset.name || th.textContent).trim());
+
+    const matrix = [header].concat(
+      rows.map(tr =>
+        dataHeaderEls.map(th => {
+          const idx = parseInt(th.dataset.col, 10);
+          return (tr.children[idx]?.textContent || '').trim();
+        })
+      )
+    );
+
+    const csv = matrix.map(cols =>
+      cols.map(val => (/[",\n]/.test(val) ? '"' + val.replace(/"/g, '""') + '"' : val)).join(',')
+    ).join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+    a.href = url;
+    a.download = `overdue_${ts}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    URL.revokeObjectURL(url);
+    a.remove();
+  }
+
+  // Wire up events
+  table.querySelectorAll('thead th[data-col]').forEach(th => {
+    th.addEventListener('click', () => sortBy(parseInt(th.dataset.col, 10)));
+  });
+  [search, minEl, maxEl].forEach(el => el && el.addEventListener('input', applyFilter));
+  exportBtn?.addEventListener('click', (e) => { e.preventDefault(); toCSV(); });
+
+  // Initial state
+  updateCount();
+  colorizeRows();
+})();
+</script>
+{% endblock %}

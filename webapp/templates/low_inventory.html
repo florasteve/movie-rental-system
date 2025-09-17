@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-6">Low Inventory</h1>
+
+<div class="mb-4 flex flex-col sm:flex-row gap-3 sm:items-center">
+  <div class="flex items-center gap-2">
+    <input id="lvSearch" type="search" placeholder="Search…"
+           class="w-72 max-w-full border rounded-xl px-3 py-2"
+           aria-label="Search low inventory table">
+    <span id="lvCount" class="text-sm text-slate-600"></span>
+  </div>
+  <div class="sm:ml-auto flex items-center gap-2">
+    <button id="lvExport" class="px-3 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700">
+      Export CSV
+    </button>
+  </div>
+</div>
+
+{% if rows|length %}
+  <div class="overflow-x-auto bg-white rounded-2xl shadow">
+    <table id="lvTable" class="min-w-full text-sm">
+      <thead class="bg-slate-100">
+        <tr>
+          {% for k, _ in rows[0].items() %}
+            <th class="text-left px-4 py-2 font-semibold cursor-pointer select-none"
+                data-col="{{ loop.index0 }}"
+                title="Click to sort">
+              <span class="inline-flex items-center gap-1">
+                {{ k }}
+                <span class="sort-indicator text-slate-400 text-xs" aria-hidden="true">⇅</span>
+              </span>
+            </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody id="lvBody">
+        {% for r in rows %}
+        <tr class="border-t">
+          {% for _, v in r.items() %}
+            <td class="px-4 py-2">{{ v }}</td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <div class="bg-white rounded-2xl shadow p-8 text-center text-slate-600">
+    <p class="text-lg font-medium mb-1">No low-stock items 🎉</p>
+    <p class="text-sm">Everything is above your threshold.</p>
+  </div>
+{% endif %}
+
+<script>
+(function () {
+  const table = document.getElementById('lvTable');
+  const tbody = document.getElementById('lvBody');
+  const search = document.getElementById('lvSearch');
+  const countEl = document.getElementById('lvCount');
+  const exportBtn = document.getElementById('lvExport');
+
+  if (!table || !tbody) return;
+
+  // Helpers
+  const getRows = () => Array.from(tbody.querySelectorAll('tr'));
+  const cellText = (tr, idx) => (tr.children[idx]?.textContent || '').trim();
+
+  const isNumeric = (s) => {
+    if (s === null || s === '') return false;
+    // try parse number (strip commas/$)
+    const n = parseFloat(String(s).replace(/[$,]/g, ''));
+    return Number.isFinite(n);
+  };
+
+  let currentSort = { col: null, dir: 1 };
+
+  function updateCount() {
+    const visible = getRows().filter(tr => tr.style.display !== 'none').length;
+    const total = getRows().length;
+    countEl.textContent = `${visible} of ${total} shown`;
+  }
+
+  function sortBy(colIdx) {
+    const rows = getRows();
+    const dir = (currentSort.col === colIdx) ? -currentSort.dir : 1;
+    currentSort = { col: colIdx, dir };
+
+    // Update indicators
+    table.querySelectorAll('th .sort-indicator').forEach(el => el.textContent = '⇅');
+    const th = table.querySelector(`th[data-col="${colIdx}"] .sort-indicator`);
+    if (th) th.textContent = dir === 1 ? '↑' : '↓';
+
+    const visible = rows.filter(tr => tr.style.display !== 'none');
+    const hidden  = rows.filter(tr => tr.style.display === 'none');
+
+    visible.sort((a, b) => {
+      const A = cellText(a, colIdx);
+      const B = cellText(b, colIdx);
+
+      const aNum = isNumeric(A) ? parseFloat(A.replace(/[$,]/g, '')) : null;
+      const bNum = isNumeric(B) ? parseFloat(B.replace(/[$,]/g, '')) : null;
+
+      let cmp;
+      if (aNum !== null && bNum !== null) {
+        cmp = aNum - bNum;
+      } else {
+        cmp = A.localeCompare(B, undefined, { sensitivity: 'base', numeric: true });
+      }
+      return cmp * dir;
+    });
+
+    // Reattach in order: sorted visible first, then hidden maintaining their relative order.
+    for (const tr of visible.concat(hidden)) tbody.appendChild(tr);
+  }
+
+  function applyFilter() {
+    const q = (search.value || '').trim().toLowerCase();
+    const rows = getRows();
+    if (!q) {
+      rows.forEach(tr => tr.style.display = '');
+      updateCount();
+      return;
+    }
+    rows.forEach(tr => {
+      const hit = Array.from(tr.children).some(td =>
+        (td.textContent || '').toLowerCase().includes(q)
+      );
+      tr.style.display = hit ? '' : 'none';
+    });
+    updateCount();
+  }
+
+  function toCSV() {
+    const rows = getRows().filter(tr => tr.style.display !== 'none');
+    const header = Array.from(table.querySelectorAll('thead th')).map(th =>
+      (th.childNodes[0]?.textContent || th.textContent || '').trim()
+    );
+
+    const matrix = [header].concat(
+      rows.map(tr => Array.from(tr.children).map(td => (td.textContent || '').trim()))
+    );
+
+    const csv = matrix.map(cols =>
+      cols.map(val => {
+        if (/[",\n]/.test(val)) return '"' + val.replace(/"/g, '""') + '"';
+        return val;
+      }).join(',')
+    ).join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const ts = new Date().toISOString().replace(/[:.]/g, '-');
+    a.href = url;
+    a.download = `low_inventory_${ts}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    URL.revokeObjectURL(url);
+    a.remove();
+  }
+
+  // Wire up events
+  table.querySelectorAll('thead th[data-col]').forEach(th => {
+    th.addEventListener('click', () => sortBy(parseInt(th.dataset.col, 10)));
+  });
+  search?.addEventListener('input', applyFilter);
+  exportBtn?.addEventListener('click', (e) => { e.preventDefault(); toCSV(); });
+
+  // Initial UI state
+  updateCount();
+})();
+</script>
+{% endblock %}

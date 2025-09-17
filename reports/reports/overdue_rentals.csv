@@ -1,0 +1,2 @@
+RentalID,CustomerID,InventoryID,DueAt,ReturnedAt,DaysLate,ReturnState
+--------,----------,-----------,-----,----------,--------,-----------

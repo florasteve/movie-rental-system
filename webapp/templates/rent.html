@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="text-2xl font-semibold mb-6">Create Rental</h1>
+
+{% if error %}
+<div class="mb-4 rounded-xl border border-red-300 bg-red-50 text-red-800 px-3 py-2">
+  {{ error }}
+</div>
+{% endif %}
+
+<form method="post" class="bg-white rounded-2xl shadow p-6 max-w-xl space-y-4">
+  <div>
+    <label class="block text-sm font-medium mb-1">Customer</label>
+    <div class="flex gap-2">
+      <form hx-get="/api/customers/search" hx-target="#customer_id" hx-trigger="keyup changed delay:300ms" class="flex-1">
+        <input name="q" placeholder="Type to search ID…" class="w-full border rounded-xl px-3 py-2">
+      </form>
+    </div>
+    <select id="customer_id" name="customer_id" required class="mt-2 w-full border rounded-xl px-3 py-2">
+      {% for cid in customers %}
+      <option value="{{ cid }}">{{ cid }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div>
+    <label class="block text-sm font-medium mb-1">Inventory (only available shown)</label>
+    <div class="flex gap-2">
+      <form hx-get="/api/inventory/search?available=1" hx-target="#inventory_id" hx-trigger="keyup changed delay:300ms" class="flex-1">
+        <input name="q" placeholder="Type to search ID…" class="w-full border rounded-xl px-3 py-2">
+      </form>
+    </div>
+    <select id="inventory_id" name="inventory_id" required class="mt-2 w-full border rounded-xl px-3 py-2">
+      {% for iid in inventory %}
+      <option value="{{ iid }}">{{ iid }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div>
+    <label class="block text-sm font-medium mb-1">Days</label>
+    <input name="days" type="number" min="1" value="{{ default_days }}" class="w-full border rounded-xl px-3 py-2"
+           oninput="document.getElementById('dueHint').textContent = new Date(Date.now() + 86400000 * Math.max(1, this.value)).toLocaleString()">
+    <p class="text-xs text-slate-600 mt-1">Due date preview: <span id="dueHint"></span></p>
+  </div>
+
+  <button class="px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700">Create Rental</button>
+</form>
+{% endblock %}

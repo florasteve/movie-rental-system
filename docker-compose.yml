@@ -1,0 +1,14 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: webapp/Dockerfile
+    environment:
+      SQLSERVER_HOST: ${SQLSERVER_HOST:-host.docker.internal}
+      SQLSERVER_PORT: ${SQLSERVER_PORT:-1433}
+      SQLSERVER_DB:   ${SQLSERVER_DB:-MovieRentalDB}
+      SQLSERVER_USER: ${SQLSERVER_USER:-SA}
+      SQLSERVER_PASS: ${SQLSERVER_PASS:-YourStrong!Passw0rd}
+    ports:
+      - "8000:8000"
+    restart: unless-stopped

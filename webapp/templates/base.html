@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{ title if title else "Movie Rental — Web" }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-900">
+<header class="bg-white border-b sticky top-0 z-10">
+  <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+    <a href="/" class="text-xl font-semibold">🎬 Movie Rental</a>
+    <nav class="flex items-center gap-4">
+      <a class="hover:text-indigo-600" href="/overdue">Overdue</a>
+      <a class="hover:text-indigo-600" href="/low-inventory">Low Stock</a>
+      <a class="hover:text-indigo-600" href="/rent">Rent</a>
+      <a class="hover:text-indigo-600" href="/return">Return</a>
+    </nav>
+  </div>
+</header>
+<main class="max-w-6xl mx-auto px-4 py-8">
+  {% block content %}{% endblock %}
+</main>
+<footer class="max-w-6xl mx-auto px-4 pb-10 text-sm text-slate-500">
+  <hr class="my-8">
+  <p>Backed by SQL Server schema, procedures & views.</p>
+</footer>
+
+<!-- HTMX for live dropdowns/search -->
+<script src="https://unpkg.com/htmx.org@1.9.12"></script>
+
+<!-- Optional: initialize due date preview on rent page -->
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const days = document.querySelector('input[name="days"]');
+    const hint = document.getElementById('dueHint');
+    if (days && hint) {
+      const update = () => {
+        const v = Math.max(1, parseInt(days.value || '1', 10));
+        hint.textContent = new Date(Date.now() + 86400000 * v).toLocaleString();
+      };
+      update();
+      days.addEventListener('input', update);
+      days.addEventListener('change', update);
+    }
+  });
+</script>
+</body>
+</html>
